@@ -1,11 +1,6 @@
-# Ignore frontend source and node_modules from backend bundling
-frontend/node_modules
+# Ignore node_modules, internal git, and backend test files
 backend/node_modules
 .git
 .github
 supabase
-*.md
 *.sql
-*.png
-*.jpg
-*.webp

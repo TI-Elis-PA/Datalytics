@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import DatePicker from '../components/DatePicker'
 import ClientModal from '../components/ClientModal'
+import elisLogo from '../assets/elis-logo.png'
 
 export default function TVMode() {
   const navigate = useNavigate()
@@ -51,7 +52,7 @@ export default function TVMode() {
       <div className="px-8 py-5 flex items-center justify-between border-b shrink-0" style={{ borderColor: 'var(--border-subtle)', background: 'var(--color-surface-1)' }}>
         <div className="flex items-center gap-6">
           <div className="w-16 h-16 flex items-center justify-center">
-             <img src="/elis-logo.png" alt="Elis Logo" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(0,155,152,0.5)]" />
+             <img src={elisLogo} alt="Elis Logo" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(0,155,152,0.5)]" />
           </div>
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>

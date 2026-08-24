@@ -2,6 +2,7 @@ import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import NPSWidget from '../nps/NPSWidget'
 import { useAuth, canAccess } from '../../contexts/AuthContext'
+import elisLogo from '../../assets/elis-logo.png'
 
 const navItems = [
   { path: '/',          label: 'Início',      icon: '🏠' },
@@ -54,7 +55,7 @@ export default function Layout() {
         {/* Logo */}
         <div className="flex items-center gap-3 px-4 py-5 border-b border-white/5">
           <div className="w-10 h-10 flex items-center justify-center">
-            <img src="/elis-logo.png" alt="Elis Logo" className="w-full h-full object-contain" />
+            <img src={elisLogo} alt="Elis Logo" className="w-full h-full object-contain" />
           </div>
           {!collapsed && (
             <div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, getDefaultRoute } from '../contexts/AuthContext';
 import { API_BASE } from '../lib/supabase';
+import elisLogo from '../assets/elis-logo.png';
 
 type Mode = 'login' | 'solicitar' | 'status';
 
@@ -124,7 +125,7 @@ export default function Login() {
           
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
-            <img src="/elis-logo.png" alt="Elis Logo" className="w-20 h-20 object-contain mb-4 drop-shadow-[0_0_20px_rgba(0,155,152,0.4)]" />
+            <img src={elisLogo} alt="Elis Logo" className="w-20 h-20 object-contain mb-4 drop-shadow-[0_0_20px_rgba(0,155,152,0.4)]" />
             <h1 className="text-2xl font-bold tracking-widest" style={{ color: textPrimary }}>DATALYTICS</h1>
             <p className="text-xs mt-1 tracking-wider" style={{ color: textMuted }}>SISTEMA INTELIGENTE DE OPERAÇÕES</p>
           </div>

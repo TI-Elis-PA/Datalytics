@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import elisLogo from '../assets/elis-logo.png';
 
 const LoadingScreen: React.FC = () => {
   const [progress, setProgress] = useState(0);
@@ -44,7 +45,7 @@ const LoadingScreen: React.FC = () => {
         
         {/* Logo / Header */}
         <div className="flex items-center justify-center mb-8">
-          <img src="/elis-logo.png" alt="Elis Logo" className="w-16 h-16 object-contain animate-pulse drop-shadow-[0_0_15px_rgba(37,99,235,0.4)]" />
+          <img src={elisLogo} alt="Elis Logo" className="w-16 h-16 object-contain animate-pulse drop-shadow-[0_0_15px_rgba(37,99,235,0.4)]" />
           <h1 className="ml-4 text-3xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-300">
             DATALYTICS
           </h1>
