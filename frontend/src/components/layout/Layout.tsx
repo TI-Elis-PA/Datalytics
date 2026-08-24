@@ -23,6 +23,7 @@ export default function Layout() {
   const location = useLocation()
   const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { user, logout } = useAuth()
   
   // Filter nav items based on user role
@@ -43,40 +44,70 @@ export default function Layout() {
     }
   }, [isLight])
 
+  // Automatically close mobile menu when route changes
+  useEffect(() => {
+    setMobileMenuOpen(false)
+  }, [location.pathname])
+
   return (
-    <div className="flex min-h-screen">
-      {/* Sidebar */}
+    <div className="flex min-h-screen relative w-full overflow-x-hidden" style={{ background: 'var(--color-surface-0)' }}>
+      {/* Mobile Backdrop Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Sidebar (Desktop Fixed + Mobile Slide-over Drawer) */}
       <aside
-        className={`sidebar fixed top-0 left-0 h-screen z-40 flex flex-col transition-all duration-300 border-r border-white/5 ${
-          collapsed ? 'w-16' : 'w-60'
+        className={`sidebar fixed top-0 left-0 h-screen z-50 flex flex-col transition-all duration-300 border-r border-white/5 ${
+          mobileMenuOpen 
+            ? 'translate-x-0 w-72 max-w-[85vw] shadow-2xl' 
+            : '-translate-x-full lg:translate-x-0'
+        } ${
+          collapsed ? 'lg:w-16' : 'lg:w-60'
         }`}
         style={{ background: 'var(--color-surface-1)' }}
       >
-        {/* Logo */}
-        <div className="flex items-center gap-3 px-4 py-5 border-b border-white/5">
-          <div className="w-10 h-10 flex items-center justify-center">
-            <img src={elisLogo} alt="Elis Logo" className="w-full h-full object-contain" />
-          </div>
-          {!collapsed && (
-            <div>
-              <h1 className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>Datalytics Elis</h1>
-              <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Premium Edition</p>
+        {/* Logo & Close for Mobile */}
+        <div className="flex items-center justify-between px-4 py-5 border-b border-white/5">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 flex items-center justify-center shrink-0">
+              <img src={elisLogo} alt="Elis Logo" className="w-full h-full object-contain" />
             </div>
-          )}
+            {(!collapsed || mobileMenuOpen) && (
+              <div>
+                <h1 className="text-sm font-bold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Datalytics Elis</h1>
+                <p className="text-[10px]" style={{ color: 'var(--color-text-muted)' }}>Premium Edition</p>
+              </div>
+            )}
+          </div>
+          {/* Mobile Close Button */}
+          <button
+            onClick={() => setMobileMenuOpen(false)}
+            className="lg:hidden p-2 rounded-lg text-sm transition-colors hover:bg-white/10"
+            style={{ color: 'var(--color-text-muted)' }}
+            aria-label="Fechar menu"
+          >
+            ✕
+          </button>
         </div>
 
-        <nav className="flex-1 p-3 space-y-2 mt-2 overflow-y-auto">
+        {/* Navigation Items */}
+        <nav className="flex-1 p-3 space-y-1.5 mt-2 overflow-y-auto">
           {visibleNavItems.map(item => {
-            // TV Mode is outside the Layout — use a full page navigation to avoid React hook mismatch
             if (item.path === '/tv') {
               return (
                 <a
                   key={item.path}
                   href={item.path}
                   className="sidebar-link"
+                  onClick={() => setMobileMenuOpen(false)}
                 >
-                  <span className="text-lg drop-shadow-md">{item.icon}</span>
-                  {!collapsed && <span>{item.label}</span>}
+                  <span className="text-lg drop-shadow-md shrink-0">{item.icon}</span>
+                  {(!collapsed || mobileMenuOpen) && <span className="truncate">{item.label}</span>}
                 </a>
               )
             }
@@ -84,12 +115,13 @@ export default function Layout() {
               <NavLink
                 key={item.path}
                 to={item.path}
+                onClick={() => setMobileMenuOpen(false)}
                 className={({ isActive }) =>
                   `sidebar-link ${isActive ? 'active' : ''}`
                 }
               >
-                <span className="text-lg drop-shadow-md">{item.icon}</span>
-                {!collapsed && <span>{item.label}</span>}
+                <span className="text-lg drop-shadow-md shrink-0">{item.icon}</span>
+                {(!collapsed || mobileMenuOpen) && <span className="truncate">{item.label}</span>}
               </NavLink>
             )
           })}
@@ -98,9 +130,9 @@ export default function Layout() {
         {/* User Info + Logout */}
         {user && (
           <div className="p-3 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
-            {!collapsed ? (
+            {(!collapsed || mobileMenuOpen) ? (
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white shrink-0"
                   style={{ background: user.perfil === 'gestor' ? '#009B98' : user.perfil === 'expedidor' ? '#3B82F6' : '#6B7280' }}>
                   {user.nome.charAt(0).toUpperCase()}
                 </div>
@@ -110,7 +142,7 @@ export default function Layout() {
                 </div>
                 <button
                   onClick={() => { logout(); navigate('/login'); }}
-                  className="text-xs px-2 py-1 rounded hover:bg-red-500/10 transition-colors"
+                  className="text-xs px-2 py-1 rounded hover:bg-red-500/10 transition-colors shrink-0"
                   style={{ color: 'var(--color-status-danger)' }}
                   title="Sair do sistema"
                 >
@@ -131,17 +163,17 @@ export default function Layout() {
         )}
 
         {/* Realtime indicator */}
-        <div className="p-4 border-t" style={{ borderColor: 'var(--border-subtle)' }}>
+        <div className="p-4 border-t hidden lg:block" style={{ borderColor: 'var(--border-subtle)' }}>
           <div className="flex items-center gap-2 text-xs font-medium" style={{ color: 'var(--color-text-muted)' }}>
             <span className="realtime-dot" />
             {!collapsed && <span>Tempo Real Ativo</span>}
           </div>
         </div>
 
-        {/* Collapse toggle */}
+        {/* Collapse toggle (Desktop only) */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="p-3 border-t text-xs font-medium transition-colors"
+          className="hidden lg:block p-3 border-t text-xs font-medium transition-colors text-center w-full"
           style={{ borderColor: 'var(--border-subtle)', color: 'var(--color-text-muted)' }}
         >
           {collapsed ? '→' : '← Recolher'}
@@ -150,12 +182,13 @@ export default function Layout() {
 
       {/* Main content */}
       <main
-        className="main-content flex-1 transition-all duration-300"
-        style={{ marginLeft: collapsed ? '4rem' : '15rem' }}
+        className={`main-content flex-1 transition-all duration-300 min-w-0 w-full flex flex-col ${
+          collapsed ? 'lg:ml-16' : 'lg:ml-60'
+        } ml-0`}
       >
         {/* Header */}
         <header
-          className="sticky top-0 z-30 px-6 py-4 flex items-center justify-between border-b"
+          className="sticky top-0 z-30 px-3 sm:px-6 py-3.5 sm:py-4 flex items-center justify-between border-b shrink-0"
           style={{ 
             background: 'var(--glass-bg-start)', 
             backdropFilter: 'blur(16px)',
@@ -163,40 +196,57 @@ export default function Layout() {
             borderColor: 'var(--glass-border)'
           }}
         >
-          <div>
-            <h2 className="text-xl font-bold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>
-              {navItems.find(n => n.path === location.pathname)?.label || 'Dashboard'}
-            </h2>
-            <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-muted)' }}>
-              {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-            </p>
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            {/* Hamburger Button for Mobile */}
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className="lg:hidden w-9 h-9 rounded-lg flex items-center justify-center transition-colors shadow-sm shrink-0"
+              style={{ background: 'var(--color-surface-2)', border: '1px solid var(--border-subtle)', color: 'var(--color-text-primary)' }}
+              aria-label="Abrir Menu de Navegação"
+            >
+              <span className="text-lg">☰</span>
+            </button>
+
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-xl font-bold tracking-tight truncate" style={{ color: 'var(--color-text-primary)' }}>
+                {navItems.find(n => n.path === location.pathname)?.label || 'Dashboard'}
+              </h2>
+              <p className="text-[11px] sm:text-xs mt-0.5 hidden md:block truncate" style={{ color: 'var(--color-text-muted)' }}>
+                {new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
+
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {/* Theme Toggle Button */}
             <button 
               onClick={() => setIsLight(!isLight)}
-              className="w-10 h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110 shadow-sm"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition-transform hover:scale-110 shadow-sm"
               style={{ background: 'var(--color-surface-2)', border: '1px solid var(--border-subtle)' }}
               title={isLight ? 'Ativar Modo Escuro' : 'Ativar Modo Claro'}
             >
-              <span className="text-lg">{isLight ? '🌙' : '☀️'}</span>
+              <span className="text-sm sm:text-lg">{isLight ? '🌙' : '☀️'}</span>
             </button>
+
+            {/* AI Assistant Button */}
             <button
               onClick={() => window.dispatchEvent(new CustomEvent('open-ai'))}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg font-bold text-xs text-white shadow-lg transition-transform hover:scale-105"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-2 rounded-lg font-bold text-xs text-white shadow-lg transition-transform hover:scale-105 shrink-0"
               style={{ background: 'var(--color-elis-teal-dark)', boxShadow: '0 4px 14px rgba(0, 155, 152, 0.4)' }}
             >
-              ✨ IA
+              ✨ <span className="hidden sm:inline">IA Copilot</span>
             </button>
+
             <NPSWidget />
-            <div className="text-sm font-mono font-medium px-4 py-2 rounded-lg" style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-secondary)', border: '1px solid var(--border-subtle)' }}>
+
+            <div className="hidden lg:block text-xs sm:text-sm font-mono font-medium px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg" style={{ background: 'var(--color-surface-2)', color: 'var(--color-text-secondary)', border: '1px solid var(--border-subtle)' }}>
               <Clock />
             </div>
           </div>
         </header>
 
-        {/* Page content with Transition Wrapper */}
-        <div className="p-8 page-transition-enter" key={location.pathname}>
+        {/* Page content with Responsive Padding and Overflow Prevention */}
+        <div className="p-3 sm:p-5 md:p-8 flex-1 w-full max-w-full overflow-x-hidden page-transition-enter" key={location.pathname}>
           <Outlet />
         </div>
       </main>

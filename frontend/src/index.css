@@ -613,10 +613,51 @@ body {
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.12), 0 0 40px rgba(0, 155, 152, 0.06);
 }
 
-/* ─── Responsive ─── */
-@media (max-width: 768px) {
-  .sidebar { display: none; }
+/* ─── Data Tables & Responsive Helpers ─── */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.875rem;
+}
+
+.data-table th {
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--color-surface-1);
+  white-space: nowrap;
+}
+
+.data-table td {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--color-text-primary);
+  vertical-align: middle;
+}
+
+.data-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+:root.light .data-table tbody tr:hover {
+  background: rgba(0, 155, 152, 0.04);
+}
+
+/* ─── Responsive Adjustments ─── */
+@media (max-width: 1024px) {
   .main-content { margin-left: 0 !important; }
+}
+
+@media (max-width: 768px) {
+  .data-table th, .data-table td {
+    padding: 0.5rem 0.625rem;
+    font-size: 0.75rem;
+  }
   
   .kpi-modal-container {
     max-width: 100%;
@@ -632,3 +673,4 @@ body {
     font-size: 0.75rem;
   }
 }
+

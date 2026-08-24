@@ -120,8 +120,8 @@ export default function Login() {
       </button>
 
       {/* Login Card */}
-      <div className="relative z-10 w-full max-w-md mx-4">
-        <div className="rounded-2xl p-8 backdrop-blur-md shadow-2xl" style={{ background: cardBg, border: `1px solid ${cardBorder}`, boxShadow: `0 0 60px rgba(0, 155, 152, ${isLight ? '0.04' : '0.08'})`, transition: 'all 0.4s' }}>
+      <div className="relative z-10 w-full max-w-md mx-3 sm:mx-4">
+        <div className="rounded-2xl p-5 sm:p-8 backdrop-blur-md shadow-2xl" style={{ background: cardBg, border: `1px solid ${cardBorder}`, boxShadow: `0 0 60px rgba(0, 155, 152, ${isLight ? '0.04' : '0.08'})`, transition: 'all 0.4s' }}>
           
           {/* Logo */}
           <div className="flex flex-col items-center mb-8">
