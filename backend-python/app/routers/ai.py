@@ -19,8 +19,8 @@ async def _call_gemini_api(prompt: str) -> str | None:
     if not api_key or api_key == "your-gemini-api-key-here":
         return None
 
-    # Model: gemini-2.5-flash or gemini-1.5-flash
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    # Supported fast model
+    models = ["gemini-3.5-flash", "gemini-3.7-flash"]
     payload = {
         "contents": [
             {
@@ -31,21 +31,26 @@ async def _call_gemini_api(prompt: str) -> str | None:
         ]
     }
 
-    try:
-        verify_ssl = os.getenv("DISABLE_SSL_VERIFY", "false").lower() != "true"
-        async with httpx.AsyncClient(verify=verify_ssl, timeout=30.0) as client:
-            resp = await client.post(url, json=payload)
-            if resp.status_code == 200:
-                data = resp.json()
-                candidates = data.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    if parts:
-                        return parts[0].get("text", "")
-            else:
-                logger.error("Gemini API error (%d): %s", resp.status_code, resp.text)
-    except Exception as e:
-        logger.error("Gemini API request failed: %s", e)
+    verify_ssl = os.getenv("DISABLE_SSL_VERIFY", "false").lower() != "true"
+    
+    for model_name in models:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+        try:
+            async with httpx.AsyncClient(verify=verify_ssl, timeout=25.0) as client:
+                resp = await client.post(url, json=payload)
+                if resp.status_code == 200:
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        texts = [p["text"] for p in parts if "text" in p]
+                        if texts:
+                            return "".join(texts).strip()
+                else:
+                    logger.warning("Gemini model %s returned status %d: %s", model_name, resp.status_code, resp.text[:200])
+        except Exception as e:
+            logger.warning("Gemini request failed for model %s: %s", model_name, e)
+
     return None
 
 
