@@ -1,9 +1,9 @@
-"""AI router – Gemini integration with smart fallback"""
+"""AI router – Gemini integration with smart fallback via httpx"""
 import logging
 import os
-import threading
 from datetime import date, timedelta, datetime
 
+import httpx
 from fastapi import APIRouter
 
 from app.core.models import AIQuestion
@@ -12,30 +12,41 @@ from app.core.supabase_client import get_supabase
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-_genai_model = None
-_genai_lock = threading.Lock()
 
-
-def _get_gemini():
-    """Get or lazily initialize the Gemini model (thread-safe)."""
-    global _genai_model
-
-    with _genai_lock:
-        if _genai_model:
-            return _genai_model
-
-        api_key = os.getenv("GEMINI_API_KEY")
-        if api_key and api_key != "your-gemini-api-key-here":
-            try:
-                import google.generativeai as genai
-
-                genai.configure(api_key=api_key)
-                _genai_model = genai.GenerativeModel("gemini-3.6-flash")
-                logger.info("Gemini model initialized (gemini-3.6-flash)")
-                return _genai_model
-            except Exception as e:
-                logger.error("Gemini init error: %s", e)
+async def _call_gemini_api(prompt: str) -> str | None:
+    """Call Google Gemini REST API directly via httpx (lightweight, no gRPC/C++ binaries)."""
+    api_key = os.getenv("GEMINI_API_KEY")
+    if not api_key or api_key == "your-gemini-api-key-here":
         return None
+
+    # Model: gemini-2.5-flash or gemini-1.5-flash
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={api_key}"
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt}
+                ]
+            }
+        ]
+    }
+
+    try:
+        verify_ssl = os.getenv("DISABLE_SSL_VERIFY", "false").lower() != "true"
+        async with httpx.AsyncClient(verify=verify_ssl, timeout=30.0) as client:
+            resp = await client.post(url, json=payload)
+            if resp.status_code == 200:
+                data = resp.json()
+                candidates = data.get("candidates", [])
+                if candidates:
+                    parts = candidates[0].get("content", {}).get("parts", [])
+                    if parts:
+                        return parts[0].get("text", "")
+            else:
+                logger.error("Gemini API error (%d): %s", resp.status_code, resp.text)
+    except Exception as e:
+        logger.error("Gemini API request failed: %s", e)
+    return None
 
 
 def _build_context(target_date: str = None) -> dict:
@@ -286,13 +297,10 @@ def _smart_answer(question: str, ctx: dict) -> str:
 async def chat(body: AIQuestion):
     """Chat com IA sobre dados operacionais."""
     ctx = _build_context(body.date)
-    model = _get_gemini()
+    s = ctx["stats"]
+    s_ontem = ctx["stats_ontem"]
 
-    if model:
-        try:
-            s = ctx["stats"]
-            s_ontem = ctx["stats_ontem"]
-            prompt = f"""Você é um analista de operações industrial (Copiloto) especializado em logística e produção na lavanderia industrial Elis.
+    prompt = f"""Você é um analista de operações industrial (Copiloto) especializado em logística e produção na lavanderia industrial Elis.
 Responda em português brasileiro, de forma direta, analítica e objetiva. Use emojis para formatar e não gere introduções muito longas.
 
 DADOS OPERACIONAIS DE HOJE ({ctx['today']}):
@@ -313,10 +321,9 @@ INSTRUÇÕES DO SISTEMA:
 
 PERGUNTA DO USUÁRIO: {body.message}
 """
-            response = model.generate_content(prompt)
-            return {"success": True, "data": {"answer": response.text, "source": "gemini"}}
-        except Exception as e:
-            logger.error("Gemini error: %s", e)
+    ai_text = await _call_gemini_api(prompt)
+    if ai_text:
+        return {"success": True, "data": {"answer": ai_text, "source": "gemini"}}
 
     answer = _smart_answer(body.message, ctx)
     return {"success": True, "data": {"answer": answer, "source": "smart"}}
@@ -326,13 +333,10 @@ PERGUNTA DO USUÁRIO: {body.message}
 async def get_insights(date: str = None):
     """Insights automáticos do dia."""
     ctx = _build_context(date)
-    model = _get_gemini()
     insights_text = _smart_insights(ctx) # Fallback padrão
     
-    if model:
-        try:
-            s = ctx["stats"]
-            prompt = f"""Atue como um Especialista de Dados Industriais da Elis. 
+    s = ctx["stats"]
+    prompt = f"""Atue como um Especialista de Dados Industriais da Elis. 
 Faça uma análise rápida e impactante dos dados operacionais de hoje ({ctx['today']}).
 Seja direto, profissional e use emojis.
 Divida em 3 curtos tópicos: 1. Status da Produção/Eficiência, 2. Saúde das Expedições (Atrasos), 3. Recomendação de Foco imediato.
@@ -343,10 +347,10 @@ DADOS REAIS LIDOS DO SISTEMA AGORA:
 - Pior ofensor: {ctx['pior_cliente']}
 
 Gere os insights executivos agora:"""
-            response = model.generate_content(prompt)
-            insights_text = response.text
-        except Exception as e:
-            logger.error("Gemini error in insights: %s", e)
+
+    ai_text = await _call_gemini_api(prompt)
+    if ai_text:
+        insights_text = ai_text
 
     return {
         "success": True,
@@ -365,3 +369,4 @@ async def relatorio_dia():
         message="Gere um relatório executivo completo do dia com resumo de expedição, eficiência, pontos de atenção e recomendações."
     )
     return await chat(body)
+

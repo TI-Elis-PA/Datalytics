@@ -1,12 +1,9 @@
-"""Ingestão de dados – Bypass do COALA
-Suporta: upload Excel, input manual, mock server
-"""
 import io
 import logging
 import random
 from datetime import date, datetime, timedelta
 
-import pandas as pd
+import openpyxl
 from fastapi import APIRouter, UploadFile, File, HTTPException
 
 from app.core.supabase_client import get_supabase
@@ -34,27 +31,58 @@ async def importar_excel(file: UploadFile = File(...)):
         if len(content) > MAX_UPLOAD_BYTES:
             raise HTTPException(400, f"Arquivo excede o limite de {MAX_UPLOAD_BYTES // (1024*1024)}MB")
 
-        df = pd.read_excel(io.BytesIO(content))
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+        sheet = wb.active
+        rows = list(sheet.iter_rows(values_only=True))
+        if not rows or len(rows) < 2:
+            raise HTTPException(400, "Planilha vazia ou sem linhas de dados")
+
+        raw_headers = [str(h).strip().lower() if h is not None else "" for h in rows[0]]
+        header_map = {h: idx for idx, h in enumerate(raw_headers) if h}
 
         required = {"cliente", "horario_planejado"}
-        if not required.issubset(set(df.columns)):
+        if not required.issubset(set(header_map.keys())):
             raise HTTPException(
                 400,
-                f"Colunas obrigatórias: {required}. Encontradas: {list(df.columns)}",
+                f"Colunas obrigatórias: {required}. Encontradas: {list(header_map.keys())}",
             )
 
         sb = get_supabase()
         today = date.today().isoformat()
 
-        # Fix #11: Batch insert instead of row-by-row
         payloads = []
-        for _, row in df.iterrows():
+        for row in rows[1:]:
+            if not row or not any(v is not None and str(v).strip() for v in row):
+                continue
+            
+            cliente_val = row[header_map["cliente"]] if "cliente" in header_map and header_map["cliente"] < len(row) else None
+            horario_val = row[header_map["horario_planejado"]] if "horario_planejado" in header_map and header_map["horario_planejado"] < len(row) else None
+            
+            if cliente_val is None or horario_val is None:
+                continue
+
+            peso_val = 0.0
+            if "peso_previsto_kg" in header_map and header_map["peso_previsto_kg"] < len(row):
+                try:
+                    peso_val = float(row[header_map["peso_previsto_kg"]] or 0)
+                except (ValueError, TypeError):
+                    peso_val = 0.0
+
+            turno_val = "manha"
+            if "turno" in header_map and header_map["turno"] < len(row) and row[header_map["turno"]]:
+                turno_val = str(row[header_map["turno"]]).strip()
+
+            # Formata horario se for datetime/time
+            horario_str = str(horario_val).strip()
+            if isinstance(horario_val, datetime):
+                horario_str = horario_val.strftime("%H:%M")
+
             payloads.append(
                 {
-                    "cliente": str(row["cliente"]).strip(),
-                    "horario_planejado": str(row["horario_planejado"]).strip(),
-                    "peso_previsto_kg": float(row.get("peso_previsto_kg", 0) or 0),
-                    "turno": str(row.get("turno", "manha")).strip(),
+                    "cliente": str(cliente_val).strip(),
+                    "horario_planejado": horario_str,
+                    "peso_previsto_kg": peso_val,
+                    "turno": turno_val,
                     "data": today,
                     "status": "pendente",
                     "planta": "CNN",
@@ -92,24 +120,52 @@ async def importar_excel_producao(file: UploadFile = File(...)):
         if len(content) > MAX_UPLOAD_BYTES:
             raise HTTPException(400, f"Arquivo excede o limite de {MAX_UPLOAD_BYTES // (1024*1024)}MB")
 
-        df = pd.read_excel(io.BytesIO(content))
+        wb = openpyxl.load_workbook(io.BytesIO(content), data_only=True)
+        sheet = wb.active
+        rows = list(sheet.iter_rows(values_only=True))
+        if not rows or len(rows) < 2:
+            raise HTTPException(400, "Planilha vazia ou sem linhas de dados")
+
+        raw_headers = [str(h).strip().lower() if h is not None else "" for h in rows[0]]
+        header_map = {h: idx for idx, h in enumerate(raw_headers) if h}
 
         required = {"tipo", "peso_kg"}
-        if not required.issubset(set(df.columns)):
+        if not required.issubset(set(header_map.keys())):
             raise HTTPException(400, f"Colunas obrigatórias: {required}")
 
         sb = get_supabase()
         today = date.today().isoformat()
 
-        # Fix #11: Batch insert
         payloads = []
-        for _, row in df.iterrows():
+        for row in rows[1:]:
+            if not row or not any(v is not None and str(v).strip() for v in row):
+                continue
+
+            tipo_val = row[header_map["tipo"]] if "tipo" in header_map and header_map["tipo"] < len(row) else None
+            peso_val = row[header_map["peso_kg"]] if "peso_kg" in header_map and header_map["peso_kg"] < len(row) else None
+
+            if tipo_val is None or peso_val is None:
+                continue
+
+            try:
+                peso_float = float(peso_val)
+            except (ValueError, TypeError):
+                continue
+
+            cliente_val = "Geral Planta"
+            if "cliente" in header_map and header_map["cliente"] < len(row) and row[header_map["cliente"]]:
+                cliente_val = str(row[header_map["cliente"]]).strip()
+
+            turno_val = "manha"
+            if "turno" in header_map and header_map["turno"] < len(row) and row[header_map["turno"]]:
+                turno_val = str(row[header_map["turno"]]).strip()
+
             payloads.append(
                 {
-                    "cliente": str(row.get("cliente", "Geral Planta")).strip(),
-                    "tipo": str(row["tipo"]).strip(),
-                    "peso_kg": float(row["peso_kg"]),
-                    "turno": str(row.get("turno", "manha")).strip(),
+                    "cliente": cliente_val,
+                    "tipo": str(tipo_val).strip(),
+                    "peso_kg": peso_float,
+                    "turno": turno_val,
                     "data": today,
                     "origem": "excel",
                     "planta": "CNN",

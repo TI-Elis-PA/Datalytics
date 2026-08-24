@@ -1,0 +1,11 @@
+# Ignore frontend source and node_modules from backend bundling
+frontend/node_modules
+backend/node_modules
+.git
+.github
+supabase
+*.md
+*.sql
+*.png
+*.jpg
+*.webp
