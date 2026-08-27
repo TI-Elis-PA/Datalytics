@@ -1,4 +1,4 @@
-# 🚀 Datalytics Elis
+# 🚀 Dataelytics
 
 Sistema Inteligente de Gestão de Produção, Expedição, Estoque e Rastreabilidade com Inteligência Artificial e modo TV operacional.
 
